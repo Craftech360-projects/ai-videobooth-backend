@@ -10,6 +10,7 @@ import urllib.request
 import random
 import boto3
 from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+from contextlib import asynccontextmanager
 from threading import Thread
 
 # Initialize SQLite database
@@ -46,8 +47,26 @@ def upload_to_s3(file_data, file_name):
         raise HTTPException(status_code=500, detail=f"Failed to upload to S3: {e}")
 
 # Initialize FastAPI app
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Code to run at startup (like DB initialization)
+    init_db()  # Your database initialization function
+    # Start background processing in a separate thread
+    processor_thread = Thread(target=background_processor, daemon=True)
+    processor_thread.start()
+    print("Startup complete!")
+    
+    # Yield control back to the application
+    yield
+    
+    # Code to run at shutdown (if needed)
+    print("Shutdown complete!")
 
+# Initialize FastAPI app with the lifespan handler
+app = FastAPI(lifespan=lifespan)
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to my API"}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -181,12 +200,12 @@ class WorkflowRequest(BaseModel):
     workflow: dict
 
 # API endpoints
-@app.on_event("startup")
-async def startup_event():
-    init_db()
-    # Start background processor in a separate thread
-    processor_thread = Thread(target=background_processor, daemon=True)
-    processor_thread.start()
+# @app.on_event("startup")
+# async def startup_event():
+#     init_db()
+#     # Start background processor in a separate thread
+#     processor_thread = Thread(target=background_processor, daemon=True)
+#     processor_thread.start()
 import random
 @app.post("/process-video")
 def process_video(request: WorkflowRequest):
