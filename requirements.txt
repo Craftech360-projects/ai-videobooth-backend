@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pydantic
+websocket-client
+boto3
+urllib3
