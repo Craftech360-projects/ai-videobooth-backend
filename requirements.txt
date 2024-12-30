@@ -4,3 +4,4 @@ pydantic
 websocket-client
 boto3
 urllib3
+sqlite3
