@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "ai-videobooth-backend"
+version = "0.1.0"
+description = ""
+authors = ["Abilash <abilashs003@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.11.8"
+fastapi = "^0.115.6"
+uvicorn = "^0.34.0"
+pydantic = "^2.10.4"
+urllib3 = "^2.3.0"
+websocket-client = "^1.8.0"
+boto3 = "^1.35.91"
+
+
+[tool.poetry.group.dev.dependencies]
+poethepoet = "^0.32.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poe.tasks]
+run = "python main.py"
+start-api = "uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+check-status = "curl http://127.0.0.1:8000/check-status/{unique_number}"
