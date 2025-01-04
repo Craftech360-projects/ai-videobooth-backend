@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Define the base directory for cloning
+base_dir="../../../custom_nodes"
+
+# Create the custom_nodes directory if it doesn't exist
+# mkdir -p "$base_dir"
+
 # List of GitHub repositories to clone
 repos=(
     "https://github.com/ltdrdata/ComfyUI-Impact-Pack.git"
@@ -33,9 +39,24 @@ repos=(
     "https://github.com/PowerHouseMan/ComfyUI-AdvancedLivePortrait.git"
 )
 
-# Clone each repository
+# Clone each repository into the custom_nodes folder
 for repo in "${repos[@]}"
 do
-    echo "Cloning $repo..."
-    git clone "$repo"
+    echo "Cloning $repo into $base_dir..."
+    git clone "$repo" "$base_dir/$(basename "$repo" .git)"
+
+    # Extract the folder name from the repository URL
+    folder_name=$(basename "$repo" .git)
+
+    # Check if the folder is one of the special repositories
+    if [[ "$folder_name" == "comfyui_controlnet_aux" || "$folder_name" == "ComfyUI-tbox" ]]; then
+        echo "Entering $base_dir/$folder_name to install requirements..."
+        cd "$base_dir/$folder_name" || exit
+        if [[ -f "requirements.txt" ]]; then
+            pip install -r requirements.txt
+        else
+            echo "No requirements.txt found in $folder_name, skipping pip install."
+        fi
+        cd - > /dev/null
+    fi
 done

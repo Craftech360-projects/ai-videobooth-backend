@@ -1,3 +1,8 @@
+## Steps to RUN AI Video booth
+
+[Click for detailed Steps](./steps/steps.md)
+
+
 ## Models for COMFY UI which needs to be used
 
 photon_v1.safetensors  - https://huggingface.co/sam749/Photon-v1/resolve/main/photon_v1.safetensors - checkpoints

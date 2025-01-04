@@ -45,7 +45,7 @@
 
 #### Comfyui Update, Models and Custom Nodes Installation
 
-* Once ComfyUI is ready, Click on Manager - Click on Update Comfy UI
+* Once ComfyUI is ready, Click on Manager - Click on Update Comfy UI, Once its updated click on Restart and after some time refresh it.
 
 ![alt text](image-5.png)
 
@@ -58,6 +58,14 @@
     ```
 
 * Run the start.sh file to download all the custom nodes and models into Comfy ui folder respectively
+
+* Again got to ComfyUI Manager and go to Model manager, In that download Clipvision and IpAdapter Models and restart the Comfyui again
+
+![alt text](image-6.png)
+
+![alt text](image-7.png)
+
+* Upload the workflow and test once output, Once done its all set
 
 
 
