@@ -33,6 +33,7 @@ urls=(
   "https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11p_sd15s2_lineart_anime.pth|controlnet|control_v11p_sd15s2_lineart_anime.pth"
   "https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11p_sd15s2_lineart_anime.yaml|controlnet|control_v11p_sd15s2_lineart_anime.yaml"
   "https://huggingface.co/stabilityai/sd-vae-ft-mse-original/blob/main/vae-ft-mse-840000-ema-pruned.safetensors|vae|vae-ft-mse-840000-ema-pruned.safetensors"
+  "https://huggingface.co/stabilityai/sd-vae-ft-mse-original/resolve/main/vae-ft-mse-840000-ema-pruned.ckpt|vae|vae-ft-mse-840000-ema-pruned.ckpt"
 )
 
 # Download each file with its original name or specified custom name
