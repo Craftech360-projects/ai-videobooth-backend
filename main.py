@@ -13,11 +13,11 @@ import boto3
 from contextlib import asynccontextmanager
 from threading import Thread
 import os
+from dotenv import load_dotenv
 
-AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-AWS_REGION = os.getenv('AWS_REGION')
-
+AWS_ACCESS_KEY_ID = 'AKIATNVEVRMLGFC7SKG6'
+AWS_SECRET_ACCESS_KEY = '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'
+AWS_REGION = 'us-east-1'
 
 # Initialize SQLite database
 def init_db():
@@ -82,7 +82,7 @@ app.add_middleware(
 )
 
 # ComfyUI server configuration
-server_address = "127.0.0.1:8188"
+server_address = "213.173.109.155:13453"
 client_id = str(uuid.uuid4())
 
 # Helper functions for ComfyUI interaction
