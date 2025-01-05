@@ -82,7 +82,7 @@ app.add_middleware(
 )
 
 # ComfyUI server configuration
-server_address = "213.173.109.155:13453"
+server_address = "213.173.109.138:10533"
 client_id = str(uuid.uuid4())
 
 # Helper functions for ComfyUI interaction

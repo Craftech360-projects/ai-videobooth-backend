@@ -1,0 +1,44 @@
+{
+    "id": "w437jo4r7g41sp",
+    "containerDiskInGb": 10,
+    "costPerHr": 0.69,
+    "desiredStatus": "RUNNING",
+    "dockerArgs": null,
+    "dockerId": null,
+    "env": ["PUBLIC_KEY=null"],
+    "gpuCount": 1,
+    "imageName": "registry.hf.space/camenduru-comfyui-temp:latest",
+    "lastStatusChange": "Rented by User: Sun Jan 05 2025 12:08:40 GMT+0000 (Coordinated Universal Time)",
+    "machineId": "m3dzxma32eqq",
+    "memoryInGb": 61,
+    "name": "ComfyUI AI VideoBooth",
+    "podType": "RESERVED",
+    "port": null,
+    "ports": "7860/tcp",
+    "uptimeSeconds": 0,
+    "vcpuCount": 16,
+    "volumeInGb": 0,
+    "volumeMountPath": "/runpod-volume",
+    "runtime": {
+      "ports": [
+        {
+          "ip": "100.65.17.254",
+          "isIpPublic": false,
+          "privatePort": 19123,
+          "publicPort": 60922,
+          "type": "http"
+        },
+        {
+          "ip": "213.173.108.155",
+          "isIpPublic": true,
+          "privatePort": 7860,
+          "publicPort": 17690,
+          "type": "tcp"
+        }
+      ]
+    },
+    "machine": {
+      "gpuDisplayName": "RTX 4090"
+    }
+  }
+  

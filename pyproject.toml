@@ -14,6 +14,7 @@ urllib3 = "^2.3.0"
 websocket-client = "^1.8.0"
 boto3 = "^1.35.91"
 python-dotenv = "^1.0.1"
+runpod = "^1.7.7"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -24,7 +25,10 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 
+
 [tool.poe.tasks]
 run = "python main.py"
 start-api = "uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 check-status = "curl http://127.0.0.1:8000/check-status/{unique_number}"
+runpod = "python runpod_config.py"
+runpod_status = "python runpod_status.py"

@@ -1,5 +1,9 @@
 #!/bin/bash
 
+cd "$(dirname "$0")/comfyui"
+
+git pull
+
 # Navigate to the ai-videobooth-backend/comfyui/ai_videobooth/ folder
 cd "$(dirname "$0")/comfyui/ai_videobooth/"
 
