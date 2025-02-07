@@ -12,6 +12,7 @@ import boto3
 from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
 from contextlib import asynccontextmanager
 from threading import Thread
+import ssl
 
 # Initialize SQLite database
 def init_db():
@@ -64,6 +65,12 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI app with the lifespan handler
 app = FastAPI(lifespan=lifespan)
+
+context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+context.set_ciphers('TLSv1.2')
+context.load_cert_chain(certfile="server.crt", keyfile="server.key")
+
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to my API"}
@@ -76,24 +83,24 @@ app.add_middleware(
 )
 
 # ComfyUI server configuration
-server_address = "127.0.0.1:8188"
+server_address = "209.170.80.132:14036"
 client_id = str(uuid.uuid4())
 
 # Helper functions for ComfyUI interaction
 def queue_prompt(prompt):
     p = {"prompt": prompt, "client_id": client_id}
     data = json.dumps(p).encode('utf-8')
-    req = urllib.request.Request(f"http://{server_address}/prompt", data=data)
+    req = urllib.request.Request(f"https://{server_address}/prompt", data=data)
     return json.loads(urllib.request.urlopen(req).read())
 
 def get_image(filename, subfolder, folder_type):
     data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
     url_values = urllib.parse.urlencode(data)
-    with urllib.request.urlopen(f"http://{server_address}/view?{url_values}") as response:
+    with urllib.request.urlopen(f"https://{server_address}/view?{url_values}") as response:
         return response.read()
 
 def get_history(prompt_id):
-    with urllib.request.urlopen(f"http://{server_address}/history/{prompt_id}") as response:
+    with urllib.request.urlopen(f"https://{server_address}/history/{prompt_id}") as response:
         return json.loads(response.read())
 
 def get_gifs(ws, workflow):
@@ -147,7 +154,7 @@ def process_video_task(unique_number):
 
         # Process with ComfyUI
         ws = websocket.WebSocket()
-        ws.connect(f"ws://{server_address}/ws?clientId={client_id}")
+        ws.connect(f"wss://{server_address}/ws?clientId={client_id}")
         gifs = get_gifs(ws, workflow)
         ws.close()
 
