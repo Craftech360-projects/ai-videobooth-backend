@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Processing API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        input, button {
+            margin: 5px;
+            padding: 10px;
+        }
+        #response {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background: #f9f9f9;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Test Video Processing API</h2>
+
+    <label>Username:</label>
+    <input type="text" id="username" placeholder="Enter your username">
+    <br>
+
+    <label>Email:</label>
+    <input type="email" id="email" placeholder="Enter your email">
+    <br>
+
+    <label>Upload Workflow JSON:</label>
+    <input type="file" id="jsonFile" accept=".json">
+    <br>
+
+    <button onclick="sendRequest()">Submit Video for Processing</button>
+    <br>
+
+    <label>Enter Unique Number to Check Status:</label>
+    <input type="text" id="unique_number" placeholder="Unique ID">
+    <button onclick="checkStatus()">Check Status</button>
+
+    <div id="response"></div>
+
+    <script>
+        const API_BASE_URL = "http://127.0.0.1:8000";  // Update if hosted remotely
+
+        function sendRequest() {
+            const username = document.getElementById("username").value;
+            const email = document.getElementById("email").value;
+            const fileInput = document.getElementById("jsonFile");
+
+            if (!fileInput.files.length) {
+                alert("Please select a JSON file.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const workflowJson = JSON.parse(event.target.result); // Read file content
+
+                    const data = {
+                        username: username,
+                        email: email,
+                        workflow: workflowJson  // Send JSON file content
+                    };
+
+                    // Log the data being sent
+                    console.log("Sending request to /process-video with data:", data);
+
+                    fetch(`${API_BASE_URL}/process-video`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(data)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("Response from /process-video:", data); // Log response
+                        document.getElementById("response").innerHTML = `<strong>Response:</strong> <br> ${JSON.stringify(data, null, 2)}`;
+                    })
+                    .catch(error => {
+                        console.error("Error sending request:", error);
+                    });
+
+                } catch (error) {
+                    alert("Invalid JSON file. Please upload a valid JSON.");
+                    console.error("JSON Parsing Error:", error);
+                }
+            };
+
+            reader.readAsText(fileInput.files[0]); // Read file as text
+        }
+
+        function checkStatus() {
+            const uniqueNumber = document.getElementById("unique_number").value;
+
+            console.log(`Checking status for unique number: ${uniqueNumber}`);
+
+            fetch(`${API_BASE_URL}/check-status/${uniqueNumber}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log("Response from /check-status:", data);
+                document.getElementById("response").innerHTML = `<strong>Response:</strong> <br> ${JSON.stringify(data, null, 2)}`;
+            })
+            .catch(error => {
+                console.error("Error fetching status:", error);
+            });
+        }
+    </script>
+
+</body>
+</html>

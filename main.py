@@ -1,4 +1,5 @@
-import sqlite3
+import logging
+from supabase import create_client, Client
 import time
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,31 +9,37 @@ import uuid
 import json
 import urllib.request
 import random
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import boto3
 # from config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
 from contextlib import asynccontextmanager
 from threading import Thread
 import os
 from dotenv import load_dotenv
+import time
+from websocket import create_connection
+from datetime import datetime, timezone
 
-AWS_ACCESS_KEY_ID = 'AKIATNVEVRMLGFC7SKG6'
-AWS_SECRET_ACCESS_KEY = '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'
-AWS_REGION = 'us-east-1'
+AWS_ACCESS_KEY_ID = 'AKIAXKPUZWFKHMHT5V4Z'
+AWS_SECRET_ACCESS_KEY = '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'
+AWS_REGION = 'ap-southeast-2'
 
-# Initialize SQLite database
-def init_db():
-    conn = sqlite3.connect('video_processing.db')
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS video_queue (
-            unique_number TEXT PRIMARY KEY,
-            workflow_json TEXT NOT NULL,
-            is_processed INTEGER DEFAULT 0,
-            final_path TEXT DEFAULT ''
-        )
-    ''')
-    conn.commit()
-    conn.close()
+SUPABASE_URL = "https://vebsyinnadyvgmwbegel.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlYnN5aW5uYWR5dmdtd2JlZ2VsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MDU2OTcsImV4cCI6MjA1NTE4MTY5N30._mX93lTANurl3POYaMYngGaGl71326BP4DXv9TbVp2w"
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY, region_name=AWS_REGION)
+s3_bucket_name = "comfyui123"
+
+# Email Configuration
+SMTP_SERVER = "smtp.gmail.com"  # Change if using another provider
+SMTP_PORT = 587
+EMAIL_SENDER = "yamuna@craftech360.com"
+EMAIL_PASSWORD = "tzufheddnviaylzo"
+
 
 # Initialize the S3 client
 s3 = boto3.client('s3', 
@@ -40,7 +47,7 @@ s3 = boto3.client('s3',
                   aws_secret_access_key=AWS_SECRET_ACCESS_KEY, 
                   region_name=AWS_REGION)
 
-s3_bucket_name = "cft-employee"
+s3_bucket_name = "comfyui123"
 
 def upload_to_s3(file_data, file_name):
     try:
@@ -55,24 +62,29 @@ def upload_to_s3(file_data, file_name):
 # Initialize FastAPI app
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Code to run at startup (like DB initialization)
-    init_db()  # Your database initialization function
+    """
+    Lifecycle function for FastAPI.
+    Runs before the application starts and after it stops.
+    """
+    print("Starting up the API...")
+
     # Start background processing in a separate thread
     processor_thread = Thread(target=background_processor, daemon=True)
     processor_thread.start()
-    print("Startup complete!")
     
-    # Yield control back to the application
+    print("Startup complete! Background processor running...")
+
+    # Yield control back to FastAPI app
     yield
-    
-    # Code to run at shutdown (if needed)
-    print("Shutdown complete!")
+
+    print("Shutting down API...")
+
 
 # Initialize FastAPI app with the lifespan handler
 app = FastAPI(lifespan=lifespan)
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to my API"}
+    return {"message": "Welcomeeeee to my API"}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -81,16 +93,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ComfyUI server configuration
-server_address = "213.173.109.138:10533"
+server_address = "213.173.109.149:16873"
 client_id = str(uuid.uuid4())
 
+    
 # Helper functions for ComfyUI interaction
-def queue_prompt(prompt):
+def queue_prompt(prompt, client_id, server_address):
     p = {"prompt": prompt, "client_id": client_id}
     data = json.dumps(p).encode('utf-8')
-    req = urllib.request.Request(f"http://{server_address}/prompt", data=data)
-    return json.loads(urllib.request.urlopen(req).read())
+    url = f"http://{server_address}/prompt"
+
+    print(f"DEBUG: Sending request to {url}")
+    print(f"DEBUG: Request payload: {p}")
+
+    req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+    
+    try:
+        response = urllib.request.urlopen(req)
+        response_data = json.loads(response.read())
+        print(f"DEBUG: Response received: {response_data}")
+        return response_data
+    except urllib.error.HTTPError as e:
+        print(f"ERROR: HTTPError {e.code} - {e.reason}")
+        print(f"ERROR: Response content: {e.read().decode()}")
+        raise
+    except urllib.error.URLError as e:
+        print(f"ERROR: URLError - {e.reason}")
+        raise
+
+
 
 def get_image(filename, subfolder, folder_type):
     data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
@@ -102,8 +133,10 @@ def get_history(prompt_id):
     with urllib.request.urlopen(f"http://{server_address}/history/{prompt_id}") as response:
         return json.loads(response.read())
 
-def get_gifs(ws, workflow):
+def get_video(ws, workflow, unique_number, username, email):
+    print("get_video section")
     prompt_id = queue_prompt(workflow)['prompt_id']
+    print("prompt id is", prompt_id)
     output_gifs = {}
 
     while True:
@@ -117,85 +150,175 @@ def get_gifs(ws, workflow):
 
     history = get_history(prompt_id)[prompt_id]
     for node_id, node_output in history['outputs'].items():
-        if 'gifs' in node_output:
-            gifs_output = []
-            for gif in node_output['gifs']:
-                gif_data = get_image(gif['filename'], gif['subfolder'], gif['type'])
-                s3_file_name = f"gifs/{uuid.uuid4()}/{gif['filename']}"
-                s3_url = upload_to_s3(gif_data, s3_file_name)
-                gifs_output.append({
-                    'filename': gif['filename'],
-                    'subfolder': gif['subfolder'],
-                    'type': gif['type'],
-                    'format': gif['format'],
-                    'frame_rate': gif['frame_rate'],
-                    's3Url': s3_url
-                })
-            output_gifs[node_id] = gifs_output
-
+        print("node outputs are", node_output)
+        
+        # Update Supabase status column to 2 for the unique_number
+        supabase.table("videos").update({"status": 2}).eq("unique_number", unique_number).execute()
+        print(f"Updated status to 2 for unique number {unique_number} in Supabase.")
+        
+        # Retrieve the latest file link from S3
+        response = s3.list_objects_v2(Bucket=s3_bucket_name, Prefix=f"videos/{unique_number}/")
+        if 'Contents' in response:
+            latest_file = max(response['Contents'], key=lambda x: x['LastModified'])['Key']
+            video_link = f"https://{s3_bucket_name}.s3.amazonaws.com/{latest_file}"
+            print("Latest video link:", video_link)
+            
+            # Send email with the video link
+            send_email(email, username, video_link)
+        else:
+            print("No video found for the given unique number.")
+        
     return output_gifs
+
+
+import time
 
 def process_video_task(unique_number):
     print(f"Starting processing: {unique_number}")
+
     try:
-        # Load workflow JSON from the database
-        conn = sqlite3.connect('video_processing.db')
-        c = conn.cursor()
+        # Update status to "processing" (1) and store the start time
+        start_time = time.time()
+        print(f"Updating status to 'processing' for unique number: {unique_number}")
+        supabase.table("video_queue").update({"status": 1}).eq("unique_number", unique_number).execute()
 
-        c.execute('SELECT workflow_json FROM video_queue WHERE unique_number = ?', (unique_number,))
-        result = c.fetchone()
-        conn.close()
+        # Retrieve workflow JSON & user details from Supabase
+        print(f"Retrieving workflow JSON and user details for unique number: {unique_number}")
+        response = (
+            supabase.table("video_queue")
+            .select("username, email, workflow_json")
+            .eq("unique_number", unique_number)
+            .execute()
+        )
 
-        if not result:
+        data = response.data
+        if not data or len(data) == 0:
             raise Exception(f"No workflow found for unique number {unique_number}")
 
-        workflow = json.loads(result[0])  # Parse the JSON string to a Python dictionary
-
-        # Process with ComfyUI
-        ws = websocket.WebSocket()
-        ws.connect(f"ws://{server_address}/ws?clientId={client_id}")
-        gifs = get_gifs(ws, workflow)
+        username = data[0]["username"]
+        email = data[0]["email"]
+        workflow = json.loads(data[0]["workflow_json"])  # Parse JSON string to dict
+        print(f"Retrieved workflow for user: {username}, email: {email}")
+        
+        
+        # ws = websocket.WebSocket()
+        try:
+            ws = create_connection(f"ws://{server_address}/ws?clientId={client_id}")
+            print("WebSocket connected successfully")
+        except Exception as e:
+            print(f"WebSocket connection failed: {e}")
+            return  # Prevent further execution
+        gifs = get_video(ws, workflow,unique_number,username,email)
         ws.close()
 
-        # Update database with results
-        conn = sqlite3.connect('video_processing.db')
-        c = conn.cursor()
-        
+        # # Check time elapsed while processing
+        # while True:
+        #     print("Processing workflow with ComfyUI")
+        #     gifs = get_gifs(ws, workflow)
+
+        #     elapsed_time = time.time() - start_time
+        #     if elapsed_time > 900:  # 15 minutes = 900 seconds
+        #         print(f"Processing time exceeded 15 minutes. Marking {unique_number} as failed.")
+        #         supabase.table("video_queue").update({"status": 3}).eq("unique_number", unique_number).execute()
+        #         ws.close()
+        #         return  # Exit the function so the background processor can pick the next job
+            
+        #     if gifs:
+        #         print("Processing successful, GIFs generated")
+        #         break  # Exit loop when processing is successful
+
+        ws.close()
+
         # Get the first S3 URL as the final path (modify as needed)
-        final_path = next(iter(gifs.values()))[0]['s3Url'] if gifs else ''
-        
-        c.execute('''
-            UPDATE video_queue 
-            SET is_processed = 1, final_path = ? 
-            WHERE unique_number = ?
-        ''', (final_path, unique_number))
-        
-        conn.commit()
-        conn.close()
-        
+        final_path = next(iter(gifs.values()))[0]["s3Url"] if gifs else ""
+        print(f"Final path for processed video: {final_path}")
+
+        # Update database with results (status = 2 for processed)
+        print(f"Updating database with results for unique number: {unique_number}")
+        update_response = (
+            supabase.table("video_queue")
+            .update({
+                "is_processed": True,
+                "final_path": final_path,
+                "status": 2  # 2 = processed
+            })
+            .eq("unique_number", unique_number)
+            .execute()
+        )
+
+        if update_response.get("error"):
+            raise Exception(f"Error updating Supabase: {update_response['error']}")
+
         print(f"Successfully processed unique number {unique_number}")
-        
+
+        # Send email to user
+        # if final_path:
+        #     send_email(email, username, final_path)
+
     except Exception as e:
         print(f"Error processing unique_number {unique_number}: {str(e)}")
-        raise
+
+        # Update status to "failed" (3) in case of an error
+        print(f"Marking unique number {unique_number} as failed due to error")
+        supabase.table("video_queue").update({"status": 3}).eq("unique_number", unique_number).execute()
+        return
+
 
 def background_processor():
     while True:
         try:
-            conn = sqlite3.connect('video_processing.db')
-            c = conn.cursor()
-            
-            # Get unprocessed video
-            c.execute('SELECT unique_number FROM video_queue WHERE is_processed = 0 LIMIT 1')
-            result = c.fetchone()
-            conn.close()
-            
-            if result:
-                unique_number = result[0]  # Extract unique_number from the result tuple
-                process_video_task(unique_number)
-            
+            print("Checking for stuck jobs...")
+
+            # Step 1: Check for stuck jobs (status = 1)
+            stuck_jobs_response = (
+                supabase.table("video_queue")
+                .select("unique_number, created_at")
+                .eq("status", 1)  # Status 1 = Processing
+                .execute()
+            )
+
+            stuck_jobs = stuck_jobs_response.data
+
+            if stuck_jobs:
+                print(f"Found {len(stuck_jobs)} stuck jobs")
+                current_time = datetime.now(timezone.utc)
+
+                for job in stuck_jobs:
+                    unique_number = job["unique_number"]
+                    created_at_str = job.get("created_at")
+
+                    if created_at_str:
+                        created_at = datetime.strptime(created_at_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+                        elapsed_time = (current_time - created_at).total_seconds()
+
+                        if elapsed_time > 900:  # More than 15 minutes
+                            print(f"Job {unique_number} stuck for over 15 minutes. Marking as failed.")
+                            supabase.table("video_queue").update({"status": 3}).eq("unique_number", unique_number).execute()
+
+            else:
+                print("No stuck jobs found. Checking for unprocessed videos...")
+
+                # Step 2: Fetch the oldest unprocessed video (status = 0)
+                response = (
+                    supabase.table("video_queue")
+                    .select("unique_number")
+                    .eq("status", 0)  # Status 0 = Not Processed
+                    .order("created_at", asc=True)  # Fetch the oldest entry first
+                    .limit(1)
+                    .execute()
+                )
+
+                data = response.data
+
+                if data:
+                    unique_number = data[0]["unique_number"]
+                    print(f"Processing new video with unique number: {unique_number}")
+                    process_video_task(unique_number)
+                else:
+                    print("No unprocessed videos found.")
+
             time.sleep(30)  # Wait before checking again
-            
+
         except Exception as e:
             print(f"Error in background processor: {str(e)}")
             time.sleep(30)  # Wait before retrying
@@ -203,7 +326,10 @@ def background_processor():
 
 # Request schema
 class WorkflowRequest(BaseModel):
+    username: str
+    email: str
     workflow: dict
+
 
 # API endpoints
 # @app.on_event("startup")
@@ -213,75 +339,105 @@ class WorkflowRequest(BaseModel):
 #     processor_thread = Thread(target=background_processor, daemon=True)
 #     processor_thread.start()
 import random
+
+
 @app.post("/process-video")
 def process_video(request: WorkflowRequest):
     try:
         workflow = request.workflow
-        print(workflow)
+        username = request.username
+        email = request.email
         unique_number = f"{random.randint(10000, 99999)}"  # Generate a unique number
 
-        # Save to database
-        conn = sqlite3.connect("video_processing.db")
-        c = conn.cursor()
+        # Save to Supabase
+        data = {
+            "unique_number": unique_number,
+            "username": username,
+            "email": email,
+            "workflow_json": json.dumps(workflow),
+            "is_processed": False,
+            "final_path": "",
+            "status": 0,  # 0 = not processed
+        }
 
-        # Ensure the table exists
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS video_queue (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                unique_number TEXT,
-                workflow_json TEXT,
-                is_processed INTEGER,
-                final_path TEXT
-            )
-        ''')
+        response = supabase.table("video_queue").insert(data).execute()
 
-        # Insert the workflow JSON into the database
-        c.execute(
-            '''
-            INSERT INTO video_queue (unique_number, workflow_json, is_processed, final_path)
-            VALUES (?, ?, 0, '')
-            ''',
-            (unique_number, json.dumps(workflow)),
-        )
-        conn.commit()
-        conn.close()
+        if response.data is None or len(response.data) == 0:
+            raise HTTPException(status_code=500, detail=f"Error saving to Supabase: {response}")
 
-        print(f"Saved workflow to queue with unique number {unique_number}")
 
+        print(f"Saved workflow for {username} ({email}) with unique number {unique_number}")
         return {"unique_number": unique_number}
+
     except Exception as e:
         print(f"Error saving workflow: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
     
 
 @app.get("/check-status/{unique_number}")
 def check_status(unique_number: str):
+    print("checkprocess called")
     try:
-        conn = sqlite3.connect('video_processing.db')
-        c = conn.cursor()
-        c.execute('SELECT is_processed, final_path FROM video_queue WHERE unique_number = ?', (unique_number,))
-        result = c.fetchone()
-        conn.close()
+        response = (
+            supabase.table("video_queue")
+            .select("username, email, is_processed, final_path, status")
+            .eq("unique_number", unique_number)
+            .execute()
+        )
 
-        if result is None:
+        data = response.data
+
+        if not data or len(data) == 0:
             raise HTTPException(status_code=404, detail="Invalid ID: Video not found.")
 
-        is_processed, final_path = result
-
-        # Handle empty or None final_path
-        if not final_path or final_path.strip() == "":
-            print("Video is still processing or not available yet.")
-            return {
-                "is_processed": bool(is_processed),
-                "final_path": None,
-                "message": "Video is still processing or not available yet."
-            }
+        username = data[0]["username"]
+        email = data[0]["email"]
+        is_processed = data[0]["is_processed"]
+        final_path = data[0]["final_path"]
+        status = data[0]["status"]  # Returns integer status
 
         return {
+            "username": username,
+            "email": email,
             "is_processed": bool(is_processed),
             "final_path": final_path,
-            "message": "Video is ready for download and streaming."
+            "status": status,  # Status is now an integer
+            "message": "Video is ready for download and streaming." if status == 2 else "Video is still processing.",
         }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server Error: {str(e)}")
+    
+    
+    
+def send_email(to_email, username, video_link):
+    """Sends an email with the video link."""
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = EMAIL_SENDER
+        msg["To"] = to_email
+        msg["Subject"] = "Your Video is Ready!"
+
+        body = f"""
+        Hi {username},
+
+        Your video has been processed successfully. You can download it using the link below:
+
+        {video_link}
+
+        Best,
+        Your Team
+        """
+        msg.attach(MIMEText(body, "plain"))
+
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_SENDER, to_email, msg.as_string())
+        server.quit()
+
+        print(f"Email sent to {to_email}")
+    
+    except Exception as e:
+        print(f"Failed to send email: {e}")
