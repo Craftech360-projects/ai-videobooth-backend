@@ -22,9 +22,7 @@ import time
 from websocket import create_connection
 from datetime import datetime, timezone
 
-AWS_ACCESS_KEY_ID = 'AKIAXKPUZWFKHMHT5V4Z'
-AWS_SECRET_ACCESS_KEY = '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'
-AWS_REGION = 'ap-southeast-2'
+
 
 SUPABASE_URL = "https://vebsyinnadyvgmwbegel.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlYnN5aW5uYWR5dmdtd2JlZ2VsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MDU2OTcsImV4cCI6MjA1NTE4MTY5N30._mX93lTANurl3POYaMYngGaGl71326BP4DXv9TbVp2w"
