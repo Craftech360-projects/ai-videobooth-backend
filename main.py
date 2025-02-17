@@ -96,7 +96,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
  
-server_address = "69.48.159.12:22569"
+server_address = "213.181.111.2:31103"
 client_id = str(uuid.uuid4())
  
  
