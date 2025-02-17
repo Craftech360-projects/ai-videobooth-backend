@@ -135,7 +135,8 @@ def get_image(filename, subfolder, folder_type):
 def get_history(prompt_id):
     with urllib.request.urlopen(f"http://{server_address}/history/{prompt_id}") as response:
         return json.loads(response.read())
- def get_video(ws, workflow, unique_number, username, email):
+ 
+def get_video(ws, workflow, unique_number, username, email):
     print("get_video section")
     prompt_id = queue_prompt(workflow, client_id=client_id, server_address=server_address)['prompt_id']
     print("prompt id is", prompt_id)
@@ -174,7 +175,7 @@ def get_history(prompt_id):
         else:
             print("No videos found in the bucket.")            
     return video_link
-
+ 
  
 import time
  
