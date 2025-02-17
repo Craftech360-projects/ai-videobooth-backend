@@ -169,9 +169,9 @@ def get_video(ws, workflow, unique_number, username, email):
                 latest_file = max(user_files, key=lambda x: x['LastModified'])['Key']
                 video_link = f"https://{s3_bucket_name}.s3.amazonaws.com/{latest_file}"
                 print("Latest video link:", video_link)
-                send_email(email, username, video_link)
+               # send_email(email, username, video_link)
             else:
-                print(f"No video found for {email}.")
+            #     print(f"No video found for {email}.")
         else:
             print("No videos found in the bucket.")            
     return video_link

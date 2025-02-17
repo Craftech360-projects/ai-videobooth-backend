@@ -22,7 +22,7 @@ def upload_test_files(unique_number):
     try:
         # Simulate uploading multiple files with different timestamps
         for i in range(3):
-            file_name = f"videos/{unique_number}/test_file_{i}.txt"
+            file_name = f"s3://comfyui123/comfyui-outputs/{unique_number}.txt"
             file_data = f"This is test file {i} for unique_number {unique_number}".encode('utf-8')
             s3.put_object(Bucket=S3_BUCKET_NAME, Key=file_name, Body=file_data)
             print(f"Uploaded {file_name} to S3.")
@@ -41,11 +41,12 @@ def get_latest_file(unique_number):
     Retrieves the latest file from the S3 bucket based on the prefix.
     """
     try:
-        response = s3.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=f"videos/{unique_number}/")
+       
+        response = s3.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=f"{unique_number}/")
         if 'Contents' in response:
             # Find the latest file based on LastModified timestamp
             latest_file = max(response['Contents'], key=lambda x: x['LastModified'])['Key']
-            video_link = f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{latest_file}"
+            video_link = f"https://{S3_BUCKET_NAME}/comfyui-outputs/{latest_file}"
             print("Latest video link:", video_link)
             return video_link
         else:
