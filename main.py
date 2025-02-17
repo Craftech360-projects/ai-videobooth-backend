@@ -135,8 +135,7 @@ def get_image(filename, subfolder, folder_type):
 def get_history(prompt_id):
     with urllib.request.urlopen(f"http://{server_address}/history/{prompt_id}") as response:
         return json.loads(response.read())
- 
-def get_video(ws, workflow, unique_number, username, email):
+ def get_video(ws, workflow, unique_number, username, email):
     print("get_video section")
     prompt_id = queue_prompt(workflow, client_id=client_id, server_address=server_address)['prompt_id']
     print("prompt id is", prompt_id)
@@ -154,25 +153,28 @@ def get_video(ws, workflow, unique_number, username, email):
     history = get_history(prompt_id)[prompt_id]
     for node_id, node_output in history['outputs'].items():
         print("node outputs are", node_output)
- 
+        
         # Update Supabase status column to 2 for the unique_number
         supabase.table("video_queue").update({"status": 2}).eq("unique_number", unique_number).execute()
         print(f"Updated status to 2 for unique number {unique_number} in Supabase.")
- 
+        
         # Retrieve the latest file link from S3
-        response = s3.list_objects_v2(Bucket=s3_bucket_name, Prefix=f"videos/{unique_number}/")
+ 
+        prefix = "comfyui-outputs/"  # Adjusted Prefix
+        response = s3.list_objects_v2(Bucket=s3_bucket_name, Prefix=prefix)
         if 'Contents' in response:
-            latest_file = max(response['Contents'], key=lambda x: x['LastModified'])['Key']
-            video_link = f"https://{s3_bucket_name}.s3.amazonaws.com/{latest_file}"
-            print("Latest video link:", video_link)
- 
-            # Send email with the video link
-            send_email(email, username, video_link)
+            user_files = [obj for obj in response['Contents'] if email in obj['Key']]
+            if user_files:
+                latest_file = max(user_files, key=lambda x: x['LastModified'])['Key']
+                video_link = f"https://{s3_bucket_name}.s3.amazonaws.com/{latest_file}"
+                print("Latest video link:", video_link)
+                send_email(email, username, video_link)
+            else:
+                print(f"No video found for {email}.")
         else:
-            print("No video found for the given unique number.")
- 
-    return output_gifs
- 
+            print("No videos found in the bucket.")            
+    return video_link
+
  
 import time
  
