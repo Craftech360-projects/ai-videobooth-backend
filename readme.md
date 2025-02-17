@@ -85,3 +85,7 @@ https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11e_sd15
 "control_v11p_sd15_softedge.yaml" - "https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11p_sd15_softedge.yaml?download=true"
 "control_v11p_sd15s2_lineart_anime.pth" - "https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11p_sd15s2_lineart_anime.pth?download=true"
 "control_v11p_sd15s2_lineart_anime.yaml" - "https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11p_sd15s2_lineart_anime.yaml?download=true"
+
+
+
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload

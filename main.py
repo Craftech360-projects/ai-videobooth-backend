@@ -21,8 +21,11 @@ from dotenv import load_dotenv
 import time
 from websocket import create_connection
 from datetime import datetime, timezone
+from dateutil import parser
 
-
+AWS_ACCESS_KEY_ID = 'AKIAXKPUZWFKHMHT5V4Z'
+AWS_SECRET_ACCESS_KEY = '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'
+AWS_REGION = 'ap-southeast-2'
 
 SUPABASE_URL = "https://vebsyinnadyvgmwbegel.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlYnN5aW5uYWR5dmdtd2JlZ2VsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2MDU2OTcsImV4cCI6MjA1NTE4MTY5N30._mX93lTANurl3POYaMYngGaGl71326BP4DXv9TbVp2w"
@@ -286,8 +289,9 @@ def background_processor():
                     created_at_str = job.get("created_at")
 
                     if created_at_str:
-                        created_at = datetime.strptime(created_at_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+                        created_at = parser.isoparse(created_at_str)
                         elapsed_time = (current_time - created_at).total_seconds()
+
 
                         if elapsed_time > 900:  # More than 15 minutes
                             print(f"Job {unique_number} stuck for over 15 minutes. Marking as failed.")
@@ -301,7 +305,7 @@ def background_processor():
                     supabase.table("video_queue")
                     .select("unique_number")
                     .eq("status", 0)  # Status 0 = Not Processed
-                    .order("created_at", asc=True)  # Fetch the oldest entry first
+                    .order("created_at", desc=False)  # Fetch the oldest entry first
                     .limit(1)
                     .execute()
                 )
