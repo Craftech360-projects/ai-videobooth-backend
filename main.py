@@ -19,7 +19,9 @@ from threading import Thread
 import os
 from dotenv import load_dotenv
 import time
-from websocket import create_connection
+from websocket._core import create_connection
+
+# from websocket import create_connection
 from datetime import datetime, timezone
 from dateutil import parser
  
