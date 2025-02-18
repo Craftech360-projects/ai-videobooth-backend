@@ -544,22 +544,31 @@ def overlay_logo(video_path, logo_path, output_path):
     cv2.destroyAllWindows()
 
 def process_video(video_url, logo_url):
+    # Extract S3 key from the video URL to replace it in the same location
+    video_key = video_url.split(BUCKET_NAME + '/')[1]
+    
     video_path = 'temp_video.mp4'
     logo_path = 'temp_logo.png'
 
+    # Download the video and logo from the storage
     download_from_s3(video_url, video_path)
     download_from_supabase_url(logo_url, logo_path)
 
+    # Generate the output path for the processed video
     output_video_path = 'output_video.mp4'
+
+    # Process the video (overlay logo)
     overlay_logo(video_path, logo_path, output_video_path)
 
-    s3_key = "processed-videos/" + os.path.basename(output_video_path)
-    upload_to_s3(output_video_path, s3_key)
+    # Upload the processed video back to the same S3 location, replacing the original video
+    upload_to_s3(output_video_path, video_key)
 
+    # Clean up temporary files
     os.remove(video_path)
     os.remove(logo_path)
 
-    return s3_key
+    return video_key  # Return the same key that was replaced
+
 
 @app.post("/add_logo/")
 async def process_video_api(request: VideoRequest):
